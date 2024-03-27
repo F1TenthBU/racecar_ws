@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: racecar-neo
+Version: 1.0.0
+Summary: base layer utilities for a Raspberry Pi Autonomous racecar
+Home-page: UNKNOWN
+Author: Christopher Lai
+Author-email: cclai@mit.edu
+Maintainer: Christopher Lai
+Maintainer-email: cclai@mit.edu
+License: UNKNOWN
+Keywords: ROS2
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development
+License-File: LICENSE
+
+UNKNOWN
+

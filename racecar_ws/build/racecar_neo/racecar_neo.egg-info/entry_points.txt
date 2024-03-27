@@ -1,0 +1,8 @@
+[console_scripts]
+camera = racecar_neo.camera:main
+gamepad = racecar_neo.gamepad:main
+imu = racecar_neo.imu:main
+mux = racecar_neo.mux:main
+pwm = racecar_neo.pwm:main
+throttle = racecar_neo.throttle:main
+
