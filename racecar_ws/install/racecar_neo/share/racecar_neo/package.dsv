@@ -1,0 +1,6 @@
+source;share/racecar_neo/hook/pythonpath.ps1
+source;share/racecar_neo/hook/pythonpath.dsv
+source;share/racecar_neo/hook/pythonpath.sh
+source;share/racecar_neo/hook/ament_prefix_path.ps1
+source;share/racecar_neo/hook/ament_prefix_path.dsv
+source;share/racecar_neo/hook/ament_prefix_path.sh
