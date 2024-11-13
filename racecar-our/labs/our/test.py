@@ -57,6 +57,7 @@ desired_speed = 1.0  # Set desired speed to 0.5 (you can adjust this value)
 flag = 0
 mid_distance = 50
 
+
 ########################################################################################
 # Functions
 ########################################################################################
@@ -285,7 +286,7 @@ def path_find(lidar_data):
     print(f"Angle: {angle} degrees")
     print(f"Ratio: {ratio}")
 
-    plot_lines_to_farthest_point_in_func(lidar_data, coordinates, farthest_point, points, distance=20)
+    #plot_lines_to_farthest_point_in_func(lidar_data, coordinates, farthest_point, points, distance=20)
     return ratio
 
 def update_lidar():
@@ -383,26 +384,12 @@ def update():
     global closest_front_distance
     global average_scan
     global flag
+    global angle_ratio
 
     update_lidar()
     start = time.time()
     angle_error = path_find(average_scan)
     print('time: ', time.time() - start)
-
-    # speed = 0.5 - (abs(angle_error))
-    # speed = max(-1.0, min(1.0, speed))
-
-    # speed = 0.2
-
-    # if abs(angle) > 0.4:
-    #     speed = -0.5
-
-    # elif abs(angle) > 0.2:
-    #     speed = 0.0
-
-
-    # flag += 1
-    # flag %= 12
     
      # Calculate speed error (difference between desired and actual speed)
     speed_error = desired_speed - speed
@@ -412,7 +399,7 @@ def update():
     if closest_front_distance < closest_side_distance * 2:
         speed_error -= 0.1
         # speed_error -= (1 * (closest_front_distance / (closest_side_distance * 4)))
-        # TODO: Find a better formula..
+        # TODO: Find a better formula.
 
     # Update speed integral term
     integral_speed += speed_error
@@ -423,12 +410,15 @@ def update():
 
     # Calculate speed PID output
     speed_pid_output = KP_speed * speed_error + KI_speed * integral_speed + KD_speed * speed_derivative
+    
 
     # Convert speed PID output to speed
-    speed = speed_pid_output
+    speed = speed_pid_output * (1 - (abs(angle_error)-0.05))
         
         # Apply controls
     rc.drive.set_speed_angle(speed, angle_error)
+    #print speed
+    print(speed, angle_error)
 
     #rc.drive.set_speed_angle(speed, angle_error)
     return
