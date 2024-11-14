@@ -17,7 +17,7 @@ import racecar_utils as rc_utils
 # Global variables
 ########################################################################################
 
-IS_SIM = True
+IS_SIM = False
 rc = racecar_core.create_racecar(IS_SIM)
 
 SHOW_PLOT = False
@@ -34,17 +34,27 @@ if IS_SIM:
     PREDICT_LEVEL = 3
     CAR_WIDTH = 30
     UNIT_PATH_LENGTH = 20
+    BRAKE_DISTANCE = 300
+    BRAKE_SECOND = 1/3.0
+    HARD_BRAKE_SECOND = 1/2.0
+    TARGET_SPEED = 0.2
     # Initialize PID control variables for angle
     KP = 1.0
     KI = 0.0
     KD = 0.0
 else:
+    # This Values are for REAL
     PREDICT_LEVEL = 2
-    CAR_WIDTH = 30
+    CAR_WIDTH = 25
     UNIT_PATH_LENGTH = 20
-    KP = 0.2
+    BRAKE_DISTANCE = 250
+    BRAKE_SECOND = 1/4.0
+    # HARD_BRAKE_DISTANCE = 200
+    HARD_BRAKE_SECOND = 1/2.0
+    TARGET_SPEED = 1.0
+    KP = 0.275 #0.25 0.2
     KI = 0.0
-    KD = 0.0
+    KD = 0.2 # 0.1  0.05   0.01
 
 prev_error_angle = 0  # Previous error for angle control
 integral_angle = 0  # Integral term for angle control
@@ -96,6 +106,9 @@ def find_farthest_point(coordinates):
         return None
     farthest_point = max(filtered_points, key=lambda p: p[2])
     return farthest_point
+
+# def find_farthest_point_front(lidar_data):
+#     filtered_points = 
 
 def point_along_line(origin, target, distance):
     vector_x = target[0] - origin[0]
@@ -206,7 +219,9 @@ def find_adjusted_path_with_points(origin, target, coordinates, distance=UNIT_PA
         closest_left, closest_right = find_closest_points_on_sides(current_point, next_point, lefts, rights)
         # print(closest_left, closest_right)
         if not closest_left or not closest_right:
-            adjusted_point = [0,0]
+            # adjusted_point = [0,0]
+            path_points.append(target)
+            return path_points
         else:
             adjusted_point = adjust_midpoint(next_point, closest_left, closest_right)
 
@@ -260,7 +275,7 @@ def path_find(lidar_data):
     coordinates = lidar_to_2d_coordinates(lidar_data)
     farthest_point = find_farthest_point(coordinates)
     points = find_adjusted_path_with_points(farthest_point, [0, 0], coordinates)
-    # print('PATH: ', points)
+    print('PATH: ', points)
 
     points_distance = PREDICT_LEVEL
     if len(points) < points_distance:
@@ -287,7 +302,8 @@ def update_lidar():
     if (len(scan) == 0):
         return False
     
-    scan = np.clip(scan, None, 1000)
+    scan = np.clip(scan, None, 3000)
+    # print(scan)
     
     if not IS_SIM:
         scan_length = len(scan) # 1081, 1 for 0 angle maybe?
@@ -374,17 +390,26 @@ def update():
     # # Convert speed PID output to speed
     # speed += speed_pid_output
 
-    speed = 0.2
+    speed = TARGET_SPEED
 
     farthest_distance = farthest_point[2]
-    if farthest_distance < 350 and flag < 30:
-        speed = 0.0
+    if farthest_point[1] < 20 and flag < (60 * HARD_BRAKE_SECOND):
+        speed = -0.3
+        flag += 1
+    # if farthest_distance < HARD_BRAKE_DISTANCE and flag < (60 * HARD_BRAKE_SECOND):
+    #     speed = -0.2
+    #     flag += 1
+    elif farthest_distance < BRAKE_DISTANCE and flag < (60 * BRAKE_SECOND):
+        speed = -0.1
         flag += 1
     elif flag > 0:
         flag += 1
     else:
         flag = 0
     flag %= 60
+
+    # print(speed, flag)
+    # speed = -0.1
 
     # emergency_distance = get_farthest_distance_in_range(average_scan, -45, 45)
     # if emergency_distance < 30:
