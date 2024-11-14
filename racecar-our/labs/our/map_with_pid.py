@@ -4,10 +4,10 @@
 
 import sys, time
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import math
-from scipy.interpolate import splprep, splev
-from scipy.spatial import distance
+# from scipy.interpolate import splprep, splev
+# from scipy.spatial import distance
 from nptyping import NDArray
 from typing import Any, Tuple
 
@@ -26,13 +26,6 @@ rc = racecar_core.create_racecar(IS_SIM)
 WINDOW_SIZE = 8 # Window size to calculate the average distance
 CURVE_ANGLE_SIZE = 40 # The angle of a gap to check existence of curve
 CURVE_DISTANCE_SIZE = 30 # The distance of a gap to check existence of curve
-# PID Constants for speed control
-SPEED_KP = 0.3  # Proportional gain for speed
-SPEED_KI = 0.001  # Integral gain for speed
-SPEED_KD = 0.05  # Derivative gain for speed
-MAX_SPEED = 1.0  # Maximum allowed speed
-MIN_SPEED = -0.5  # Minimum allowed speed (for reverse)
-DESIRED_DISTANCE_FROM_CENTER = 0.0  # Target distance from center path
 
 # >> Variables
 speed = 0.0  # The current speed of the car
@@ -53,11 +46,10 @@ prev_error_speed = 0  # Previous error for speed control
 integral_speed = 0  # Integral term for speed control
 
 # Initialize desired speed
-desired_speed = 1.0  # Set desired speed to 0.5 (you can adjust this value)
+desired_speed = 0.5  # Set desired speed to 0.5 (you can adjust this value)
 
 flag = 0
 mid_distance = 50
-
 
 ########################################################################################
 # Functions
@@ -72,13 +64,6 @@ def lidar_to_2d_coordinates(lidar_data):
         x = distance * math.cos(adjusted_angle_rad)
         y = distance * math.sin(adjusted_angle_rad)
         coordinates.append((x, y))
-    return coordinates
-
-def lidar_to_2d_coordinates_vectorized(lidar_data):
-    adjusted_angle_rad = np.radians(90 - angle)  # Shift 0 degrees to point upward
-    x = distance * np.cos(adjusted_angle_rad)
-    y = distance * np.sin(adjusted_angle_rad)
-    coordinates = np.array([x,y])
     return coordinates
 
 def find_farthest_point(coordinates):
@@ -146,7 +131,7 @@ def find_closest_points_on_sides2(origin, midpoint, left_points, right_points):
 
     return closest_left, closest_right
 
-def adjust_midpoint(midpoint, closest_left, closest_right, distance=25):
+def adjust_midpoint(midpoint, closest_left, closest_right, distance=30):
     distance_left = math.hypot(midpoint[0] - closest_left[0], midpoint[1] - closest_left[1])
     distance_right = math.hypot(midpoint[0] - closest_right[0], midpoint[1] - closest_right[1])
 
@@ -181,24 +166,37 @@ def find_adjusted_path_with_points(origin, target, distance, coordinates):
     lefts, rights = find_side_points(coordinates, origin)
 
     while True:
+        # if len(path_points) > 2:
+        #     last_remain_distance = math.hypot(path_points[-2][0] - target[0], path_points[-2][1] - target[1])
+        #     remain_distance = math.hypot(path_points[-1][0] - target[0], path_points[-1][1] - target[1])
+        #     print (last_remain_distance, remain_distance)
+        #     if last_remain_distance <= remain_distance:
+        #         print('here')
+        #         distance = 30
+        #     else:
+        #         print('here?')
+        #         distance = 10
+        # else: 
+        #     print('here!')
+        #     distance = 10
         
         distance = 20
 
         next_point = point_along_line(current_point, target, distance)
-        print('next:', next_point)
+        # print('next:', next_point)
 
         if next_point == target:
             path_points.append(target)
             return path_points
         
         closest_left, closest_right = find_closest_points_on_sides2(current_point, next_point, lefts, rights)
-        print(closest_left, closest_right)
+        # print(closest_left, closest_right)
         if not closest_left or not closest_right:
             adjusted_point = [0,0]
         else:
             adjusted_point = adjust_midpoint(next_point, closest_left, closest_right)
 
-        print('adjusted_point:', adjusted_point)
+        # print('adjusted_point:', adjusted_point)
 
         path_points.append(adjusted_point)
 
@@ -246,49 +244,20 @@ def plot_lines_to_farthest_point(lidar_data, distance=20):
     plt.legend()
     plt.show()
 
-def plot_lines_to_farthest_point_in_func(lidar_data, coordinates, farthest_point, path_points, distance=20):
-    plt.clf()  # Clear the previous figure
-
-    # x_coords = [coord[0] for coord in coordinates]
-    # y_coords = [coord[1] for coord in coordinates]
-    coordinates = np.array(coordinates)
-    x_coords = coordinates[:, 0]
-    y_coords = coordinates[:, 1]
-
-    plt.scatter(x_coords, y_coords, s=10, c='blue', alpha=0.6, label='Lidar Points')
-    plt.scatter(*farthest_point, c='red', s=50, label='Farthest Point (y > 0)')
-
-    # path_x = [point[0] for point in path_points]
-    # path_y = [point[1] for point in path_points]
-    path_points = np.array(path_points)
-    path_x = path_points[:, 0]
-    path_y = path_points[:, 1]
-
-    plt.plot(path_x, path_y, 'g-', label='Adjusted Path')
-
-    plt.scatter(path_x, path_y, c='purple', s=30, alpha=0.7, label='Path Points')
-
-    plt.xlabel('X Coordinate')
-    plt.ylabel('Y Coordinate')
-    plt.grid(True)
-    plt.axis('equal')
-    plt.legend()
-
-    plt.pause(0.001)
-
 def path_find(lidar_data):
     coordinates = lidar_to_2d_coordinates(lidar_data)
     farthest_point = find_farthest_point(coordinates)
     points = find_adjusted_path_with_points(farthest_point, [0, 0], 20, coordinates)
-    # print(points)
-    adjusted_midpoint = points[-2]
+    print(points)
+    points_distance = 2
+    if len(points) < points_distance:
+        points_distance = len(points)
+    adjusted_midpoint = points[-points_distance]
     angle = calculate_angle([0, 0], adjusted_midpoint)
     ratio = convert_angle_to_ratio(angle)
     print(f"Angle: {angle} degrees")
     print(f"Ratio: {ratio}")
-
-    #plot_lines_to_farthest_point_in_func(lidar_data, coordinates, farthest_point, points, distance=20)
-    return ratio
+    return ratio, farthest_point
 
 def update_lidar():
     """
@@ -308,8 +277,8 @@ def update_lidar():
 
     scan = rc.lidar.get_samples()
     if (len(scan) == 0):
-        return False        
-
+        return False
+    
     if not IS_SIM:
         scan_length = len(scan) # 1081, 1 for 0 angle maybe?
         values_per_angle = (scan_length - 1) / 270
@@ -321,14 +290,12 @@ def update_lidar():
         rotated_scan = np.concatenate([second_half, backward, first_half])
     else:
         rotated_scan = scan
+    
+    # scan_length = len(scan)
+    # degree_270 = int(scan_length / 360.0 * 270)
+    # rotated_scan = np.concatenate((scan[degree_270:], scan[:degree_270]))
 
     average_scan = np.array([rc_utils.get_lidar_average_distance(rotated_scan, angle, WINDOW_SIZE) for angle in range(360)])
-    # print(average_scan)
-    # return
-
-    # linear = rc.physics.get_linear_acceleration()
-    # angular = rc.physics.get_angular_velocity()
-    # print('Linear: ', linear, ' Angular: ', angular)
 
     closest_left_angle, closest_left_distance = rc_utils.get_lidar_closest_point(average_scan, (-91, -89))
     closest_leftfront_angle, closest_leftfront_distance = rc_utils.get_lidar_closest_point(average_scan, (-41, -39))
@@ -339,7 +306,7 @@ def update_lidar():
     # 30 to 60, -30 to -60 are blind spots. However, this setting makes the movement smoother. 
     # For blind spots, it would be better to find the closest point separately and handle it.
     # plot_lines_to_farthest_point(average_scan)
-    return True
+    return
 
 def start():
     """
@@ -364,23 +331,6 @@ def start():
         "Controls:\n"
         "    A button = print current speed, angle, and closest values\n"
     )
-    
-def calculate_center_error(closest_left, closest_right):
-    """
-    Calculate how far the car is from the center of the path
-    Returns positive value if closer to left wall, negative if closer to right wall
-    """
-    if not closest_left or not closest_right:
-        return 0.0
-        
-    left_distance = math.hypot(closest_left[0], closest_left[1])
-    right_distance = math.hypot(closest_right[0], closest_right[1])
-    
-    # Calculate the error (difference from center)
-    # Positive error means closer to left wall, negative means closer to right wall
-    center_error = (right_distance - left_distance) / 2
-    
-    return center_error
 
 def update():
     global speed
@@ -401,23 +351,135 @@ def update():
     global closest_front_distance
     global average_scan
     global flag
-    global angle_ratio
 
     if update_lidar() == False:
         return
-    start = time.time()
-    angle_error = path_find(average_scan)
-    print('time: ', time.time() - start)
     
-     # Calculate speed error (difference between desired and actual speed)
-    speed_error = desired_speed - speed
+    start = time.time()
+    angle_error, farthest_point = path_find(average_scan)
+    print('time: ', time.time() - start)
+    if rc.controller.is_down(rc.controller.Button.A):
+        plot_lines_to_farthest_point(average_scan)
+        return
+    # else:
+    #     start = time.time()
+    #     angle = path_find(average_scan)
+    #     print('time: ', time.time() - start)
+    #     # speed = 0.5
+    #     # if abs(angle) > 0.4:
+    #     #     speed = -0.3
+    #     # elif abs(angle) > 0.2:
+    #     #     speed = 0.0
+    #     speed = 0.5 - (abs(angle))
+    #     speed = max(-1.0, min(1.0, speed))
+    #     rc.drive.set_speed_angle(speed, angle)
+    # return
 
-    # If a crash is expected, slow down
-    closest_side_distance = min(closest_left_distance, closest_right_distance)
-    if closest_front_distance < closest_side_distance * 2:
-        speed_error -= 0.1
-        # speed_error -= (1 * (closest_front_distance / (closest_side_distance * 4)))
-        # TODO: Find a better formula.
+    speed = 0.5 - (abs(angle_error))
+    speed = max(-1.0, min(1.0, speed))
+
+    speed = 0.2
+
+    # if abs(angle_error) > 0.2:
+    #     speed = 0.0
+
+    # if abs(angle_error) > 0.5:
+    #     speed = -0.4
+    # elif abs(angle_error) > 0.4:
+    #     speed = -0.3
+    # elif abs(angle_error) > 0.3:
+    #     speed = -0.2
+    # elif abs(angle_error) > 0.2:
+    #     speed = -0.1
+    # elif abs(angle_error) > 0.1:
+    #     speed = 0.0
+
+    # if closest_front_distance < 100:
+    #     speed = -0.2
+
+    # if abs(angle) > 0.4:
+    #     speed = -0.5
+    #     # if (flag % 6 == 0):
+    #     #     speed = 0.2
+    #     # else:
+    #     #     speed = -0.5
+    # elif abs(angle) > 0.2:
+    #     speed = 0.0
+    #     # if (flag % 6 == 0):
+    #     #     speed = 0.2
+    #     # else:
+    #     #     speed = 0.0
+
+    # flag += 1
+    # flag %= 12
+
+    # rc.drive.set_speed_angle(speed, angle_error)
+    # return
+
+    # angle_error = path_find(average_scan)
+    KP = 0.2
+    KD = 0.0
+
+    # L = 150
+
+    # degree = closest_right_angle - closest_rightfront_angle
+    # theta_value = np.deg2rad(degree)
+
+    # a_value = closest_rightfront_distance
+    # b_value = closest_right_distance
+
+    # alpha1 = np.arctan((a_value * np.cos(theta_value) - b_value) / a_value * np.sin(theta_value))
+    # Dt = b_value * np.cos(alpha1)
+    # right_Dt1 = Dt + np.sin(alpha1) * L
+
+    # degree = closest_leftfront_angle - closest_left_angle
+    # theta_value = np.deg2rad(degree)
+
+    # a_value = closest_leftfront_distance
+    # b_value = closest_left_distance
+
+    # alpha2 = np.arctan((a_value * np.cos(theta_value) - b_value) / a_value * np.sin(theta_value))
+    # Dt = b_value * np.cos(alpha2)
+    # left_Dt1 = Dt + np.sin(alpha2) * L
+
+    # max_alpha = max(np.rad2deg(alpha1), np.rad2deg(alpha2))
+    # min_alpha = min(np.rad2deg(alpha1), np.rad2deg(alpha2))
+
+    # # print(max_alpha, min_alpha)
+    # # print(right_Dt1, left_Dt1)
+
+    # left_gap = average_scan[270 + CURVE_ANGLE_SIZE] - average_scan[270]
+    # right_gap = average_scan[90 - CURVE_ANGLE_SIZE] - average_scan[90]
+
+    # if closest_left_distance > 200 and closest_right_distance > 200:
+    #     rc.drive.set_speed_angle(1.0, 0.0)
+    #     return
+    # else:
+    #     if closest_front_distance < 200:
+    #         KP = 0.045
+    #         KD = 0.085
+    #         angle_error = (right_Dt1 - left_Dt1) / 2
+    #     else:
+    #         KP = 0.005
+    #         KD = 0.012
+    #         angle_error = (right_Dt1 - left_Dt1) / 2
+
+    # Update angle integral term
+    integral_angle += angle_error
+
+    # Update angle derivative term
+    angle_derivative = angle_error - prev_error_angle
+    prev_error_angle = angle_error
+
+    # Calculate angle PID output
+    angle_pid_output = KP * angle_error + KI * integral_angle + KD * angle_derivative
+
+    # Convert angle PID output to angle
+    angle = angle_pid_output
+
+    # PID control for speed
+    # Calculate speed error (difference between desired and actual speed)
+    speed_error = desired_speed - speed
 
     # Update speed integral term
     integral_speed += speed_error
@@ -428,27 +490,78 @@ def update():
 
     # Calculate speed PID output
     speed_pid_output = KP_speed * speed_error + KI_speed * integral_speed + KD_speed * speed_derivative
-    
 
     # Convert speed PID output to speed
-    # speed = speed_pid_output * (1 - (abs(angle_error)-0.05))
-    speed = speed_pid_output
-    # speed = 0
-        
-        # Apply controls
-    rc.drive.set_speed_angle(speed, angle_error)
-    #print speed
-    print(speed, angle_error)
+    speed += speed_pid_output
 
-    #rc.drive.set_speed_angle(speed, angle_error)
-    return
+    speed = 0.2
 
+    farthest_distance = math.hypot(farthest_point[0], farthest_point[1])
+    if farthest_distance < 350 and flag < 30:
+        speed = 0.0
+        flag += 1
+    elif flag > 0:
+        flag += 1
+    else:
+        flag = 0
+    flag %= 60
+    print('speed: ', speed, ' flag: ', flag)
+    
+    # if closest_front_distance < 40:
+    #     speed = -1.0
+    #     angle = -angle
+    # if min_distance < 80 and flag < 30:
+    #     speed = -0.1
+    #     flag += 1
+    # elif min_distance < 80 and flag < 60:
+    #     speed = 0.0
+    #     flag += 1
+    # elif min_distance < 180 and flag < 30:
+    #     speed = 0.1
+    #     flag += 1
+    # elif flag > 0:
+    #     flag += 1
+    # else:
+    #     flag = 0
+
+    # if abs(angle) > 0.2:
+    #     if (flag % 3 == 0):
+    #         speed = 0.0 # -0.2
+
+    # if abs(angle) > 0.2:
+    #     speed = 0.1
+    # if abs(angle) > 0.2:
+    #     if (flag % 3 == 0):
+    #         speed = 0.1
+    #     else:
+    #         speed = 0.2
+    # elif abs(angle) > 0.1:
+    #     if (flag % 3 == 0):
+    #         speed = 0.0
+    #     else:
+    #         speed = 0.1
+
+    # flag += 1
+    # flag %= 12
+
+    # Constrain speed and angle within 0.0 to 1.0
+    speed = max(0.0, min(1.0, speed))
+    angle = max(-1.0, min(1.0, angle))
+
+    # Set the speed and angle of the car
+    rc.drive.set_speed_angle(speed, angle)
+
+    # Print the current speed and angle and closest values when the A button is held down
+    if rc.controller.is_down(rc.controller.Button.A):
+        print("Speed:", speed, "Angle:", angle)
+        print("Left:", closest_left_angle, ",", closest_left_distance)
+        print("Right:", closest_right_angle, ",", closest_right_distance)
+        print("Front:", closest_front_angle, ",", closest_front_distance)
 
 ########################################################################################
 # DO NOT MODIFY: Register start and update and begin execution
 ########################################################################################
 
 if __name__ == "__main__":
-    plt.ion()
     rc.set_start_update(start, update)
     rc.go()
