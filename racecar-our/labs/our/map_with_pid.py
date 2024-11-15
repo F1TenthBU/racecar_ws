@@ -406,8 +406,8 @@ def update():
         speed = 0.22
         flag += 1
     else:
-        #if angle < 0.1 or angle > -0.1:
-        #    speed = 0.50
+        if angle < 0.05 and angle > -0.05 and farthest_distance > 500:
+            speed = 0.47
         flag = 0
     flag %= 60
 
