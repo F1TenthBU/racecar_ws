@@ -47,11 +47,11 @@ else:
     PREDICT_LEVEL = 2
     CAR_WIDTH = 25
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 250
-    BRAKE_SECOND = 1/4.0
+    BRAKE_DISTANCE = 275 #250
+    BRAKE_SECOND = 1/3.5
     # HARD_BRAKE_DISTANCE = 200
     HARD_BRAKE_SECOND = 1/2.0
-    TARGET_SPEED = 1.0
+    TARGET_SPEED = 0.44 #0.42
     KP = 0.275 #0.25 0.2
     KI = 0.0
     KD = 0.2 # 0.1  0.05   0.01
@@ -403,8 +403,11 @@ def update():
         speed = -0.1
         flag += 1
     elif flag > 0:
+        speed = 0.22
         flag += 1
     else:
+        #if angle < 0.1 or angle > -0.1:
+        #    speed = 0.50
         flag = 0
     flag %= 60
 
