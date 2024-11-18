@@ -16,16 +16,8 @@ from ackermann_msgs.msg import AckermannDriveStamped
 
 from . import maestro
 
-CAR_SPEED_MAX_DUTY = 7504      #7488 #7216
-CAR_SPEED_CENTER_DUTY = 5984       #6100 #5748
-CAR_SPEED_MIN_DUTY = 4204     #4616 #4616 #4188
-
-CAR_ANGLE_MAX_DUTY = 8400
-CAR_ANGLE_CENTER_DUTY = 6000
-CAR_ANGLE_MIN_DUTY = 3600
-
-CAR_MAX_FORWARD = 1.00  #0.25    Parameter('car_max_forward',type_=Parameter.Type.DOUBLE,value=0.25)
-CAR_MAX_BACKWARD = 1.00 #0.25   Parameter('car_max_backward',type_=Parameter.Type.DOUBLE,value=0.25)
+CAR_MAX_FORWARD = 0.25 # Parameter('car_max_forward',type_=Parameter.Type.DOUBLE,value=0.25)
+CAR_MAX_BACKWARD = 0.25 # Parameter('car_max_backward',type_=Parameter.Type.DOUBLE,value=0.25)
 CAR_MAX_TURN = float(0.4) # Parameter('car_max_turn', type_=Parameter.Type.DOUBLE, value=0.4)
 STEERING_CENTER_REL_OFFSET = float(0) # Parameter('steering_center_rel_offset', type_=Parameter.Type.DOUBLE, value=0.0)
 
@@ -43,16 +35,16 @@ def main(args=None):
     controller = maestro.Controller()
 
     # setup motor config
-    controller.setRange(0,CAR_SPEED_MIN_DUTY,CAR_SPEED_MAX_DUTY)
+    controller.setRange(0,3000,9000)
     controller.setSpeed(0,0)
     controller.setAccel(0,0)
-    controller.setTarget(0,CAR_SPEED_CENTER_DUTY)
+    controller.setTarget(0,6000)
 
     # setup steering config
-    controller.setRange(1,CAR_ANGLE_MIN_DUTY,CAR_ANGLE_MAX_DUTY)
+    controller.setRange(1,3000,9000)
     controller.setSpeed(1,0)
     controller.setAccel(1,0)
-    controller.setTarget(1,CAR_ANGLE_CENTER_DUTY)
+    controller.setTarget(1,6000)
 
     # msg.drive.speed:
     # [-1.5, 1.5] -> | -1.5 full reverse | 1.5 full forward |
@@ -60,19 +52,19 @@ def main(args=None):
     # [-0.4, 0.4] -> | -0.4 full left    | 0.4 full right   |
     def motor_callback(msg):
 
-        print("motor_callback:")
-        print(f"    >> speed:  {msg.drive.speed}")
-        print(f"    >> steer:  {msg.drive.steering_angle}")
+        # print("motor_callback:")
+        # print(f"    >> speed:  {msg.drive.speed}")
+        # print(f"    >> steer:  {msg.drive.steering_angle}")
 
         if msg.drive.speed >= 0:
-            lin_vel = map_val(msg.drive.speed, 0, CAR_MAX_FORWARD, CAR_SPEED_CENTER_DUTY, CAR_SPEED_MAX_DUTY)
+            lin_vel = map_val(msg.drive.speed, 0, CAR_MAX_FORWARD, 6000, 9000)
         else:
-            lin_vel = map_val(msg.drive.speed, -CAR_MAX_BACKWARD, 0, CAR_SPEED_MIN_DUTY, CAR_SPEED_CENTER_DUTY)
+            lin_vel = map_val(msg.drive.speed, -CAR_MAX_BACKWARD, 0, 3000, 6000)
 
-        turn_angle = map_val(msg.drive.steering_angle, -CAR_MAX_TURN, CAR_MAX_TURN, CAR_ANGLE_MAX_DUTY, CAR_ANGLE_MIN_DUTY)
+        turn_angle = map_val(msg.drive.steering_angle, -CAR_MAX_TURN, CAR_MAX_TURN, 8000, 4000)
 
-        print(f"    << speed:  {lin_vel}")
-        print(f"    << steer:  {turn_angle}")
+        # print(f"    << speed:  {lin_vel}")
+        # print(f"    << steer:  {turn_angle}")
 
         # set drive speed
         controller.setTarget(0, int(lin_vel))

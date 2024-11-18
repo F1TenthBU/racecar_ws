@@ -33,11 +33,11 @@ def generate_launch_description():
         executable='pwm',
         name='pwm_node'
 	),
-    #Node(
-	#    package='racecar_neo',
-    #    executable='camera',
-    #    name='camera_node'
-    #),
+    Node(
+	    package='racecar_neo',
+        executable='camera',
+        name='camera_node'
+	),
     Node(
 	    package='racecar_neo',
         executable='imu',

@@ -13,9 +13,9 @@ from sensor_msgs.msg import Joy
 from ackermann_msgs.msg import AckermannDriveStamped
 
 # get param file values
-CAR_THROTTLE_FORWARD = float(1.00) #0.04 rclpy.parameter.Parameter('car_throttle_forward',type_=DOUBLE, 0.25)
-CAR_THROTTLE_BACKWARD = float(1.00) # rclpy.param.Parameter('car_throttle_backward',type_=DOUBLE, 0.25)
-CAR_THROTTLE_TURN = float(0.25) # rclpy.param.Parameter('car_throttle_turn',type_=DOUBLE, 1.0)
+CAR_THROTTLE_FORWARD = float(0.25) # rclpy.parameter.Parameter('car_throttle_forward',type_=DOUBLE, 0.25)
+CAR_THROTTLE_BACKWARD = float(0.25) # rclpy.param.Parameter('car_throttle_backward',type_=DOUBLE, 0.25)
+CAR_THROTTLE_TURN = float(1.0) # rclpy.param.Parameter('car_throttle_turn',type_=DOUBLE, 1.0)
 
 
 def main(args=None):
