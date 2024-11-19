@@ -34,9 +34,9 @@ if IS_SIM:
     PREDICT_LEVEL = 3
     CAR_WIDTH = 30
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 300
-    BRAKE_SECOND = 1/3.0
-    HARD_BRAKE_SECOND = 1/2.0
+    BRAKE_DISTANCE = 345
+    BRAKE_SECOND = 1/3.5
+    HARD_BRAKE_SECOND = 1/3.0
     TARGET_SPEED = 0.2
     # Initialize PID control variables for angle
     KP = 1.0
@@ -45,18 +45,19 @@ if IS_SIM:
 else:
     # This Values are for REAL
     PREDICT_LEVEL = 2
-    CAR_WIDTH = 40
+    CAR_WIDTH = 45 #40
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 300 #250
-    BRAKE_SECOND = 1/4.0
+    BRAKE_DISTANCE = 300 #400 #250
+    BRAKE_SECOND = 1/3.25
     # HARD_BRAKE_DISTANCE = 200
-    HARD_BRAKE_SECOND = 1/2.0
-    TARGET_SPEED = 0.3 #0.42
+    HARD_BRAKE_SECOND = 1/3.5
+    TARGET_SPEED = 0.35 #0.42
     HARD_BREAK_SPEED = -0.6
     BREAK_SPEED = -0.4
     MINIMUM_SPEED = 0.2
-    BOOST_SPEED = 0.4
-    KP = 0.275 #0.275 #0.25 0.2
+    BOOST_SPEED = 0.40
+    TARGET_PREDICT_DISTANCE = 50
+    KP = 0.215 #0.275 #0.25 0.2
     KI = 0.0
     KD = 0.22 #0.2 # 0.1  0.05   0.01
 
@@ -107,12 +108,20 @@ def lidar_to_2d_coordinates(lidar_data):
 def find_farthest_point(coordinates):
     filtered_points = [point for point in coordinates if point[1] > 0]
     if not filtered_points:
-        return None
+        return None, None
+    
     farthest_point = max(filtered_points, key=lambda p: p[2])
-    return farthest_point
-
-# def find_farthest_point_front(lidar_data):
-#     filtered_points = 
+    farthest_idx = filtered_points.index(farthest_point)
+    
+    if farthest_point[0] == 0 or farthest_idx == 0 or farthest_idx == len(filtered_points) - 1:
+        return farthest_point, None
+    
+    if farthest_point[0] < 0:
+        second_farthest_point = filtered_points[farthest_idx + 1]
+    else:
+        second_farthest_point = filtered_points[farthest_idx - 1]
+    
+    return farthest_point, second_farthest_point
 
 def point_along_line(origin, target, distance):
     vector_x = target[0] - origin[0]
@@ -202,11 +211,28 @@ def adjust_midpoint(midpoint, closest_left, closest_right, distance=CAR_WIDTH):
     else:
         return [(closest_left[0] + closest_right[0]) / 2, (closest_left[1] + closest_right[1]) / 2]
 
-def find_adjusted_path_with_points(origin, target, coordinates, distance=UNIT_PATH_LENGTH):
-    current_point = origin
-    path_points = [current_point[:2]]  # Store all path points
-
+def find_adjusted_path_with_points(origin, second_origin, target, coordinates, distance=UNIT_PATH_LENGTH, future_position=None):
     lefts, rights = find_side_points(coordinates, origin)
+    target = future_position if future_position else target
+
+    current_point = origin[:2]
+    path_points = [current_point]
+    
+    if not second_origin == None:
+        vector_x = second_origin[0] - origin[0]
+        vector_y = second_origin[1] - origin[1]
+        
+        if vector_x != 0 or vector_y != 0:
+            magnitude = math.sqrt(vector_x**2 + vector_y**2)
+            unit_vector = [vector_x/magnitude, vector_y/magnitude]
+        else:
+            unit_vector = [0, 1]
+    
+        current_point = [
+            origin[0] + unit_vector[0] * TARGET_PREDICT_DISTANCE,
+            origin[1] + unit_vector[1] * TARGET_PREDICT_DISTANCE
+        ]
+        path_points.append(current_point)
 
     count = 1
     while True:
@@ -215,6 +241,10 @@ def find_adjusted_path_with_points(origin, target, coordinates, distance=UNIT_PA
 
         next_point = point_along_line(current_point, target, distance)
         # print('next:', next_point)
+
+        if math.hypot(next_point[0] - target[0], next_point[1] - target[1]) < distance * 2:
+            path_points.append(target)
+            return path_points
 
         if next_point == target:
             path_points.append(target)
@@ -275,10 +305,25 @@ def plot_lines_to_farthest_point_in_func(lidar_data, coordinates, farthest_point
 
     plt.pause(0.001)
 
-def path_find(lidar_data):
+def calculate_new_origin(angle, speed, distance=50):
+    radians = math.radians(angle * 45)
+
+    travel_distance = speed * distance
+
+    new_x = travel_distance * math.sin(radians)
+    new_y = travel_distance * math.cos(radians)
+
+    return [new_x, new_y]
+
+def path_find(lidar_data, angle, speed):
+    future_position = calculate_new_origin(angle, speed)
+    print(future_position)
+
     coordinates = lidar_to_2d_coordinates(lidar_data)
-    farthest_point = find_farthest_point(coordinates)
-    points = find_adjusted_path_with_points(farthest_point, [0, 0], coordinates)
+    farthest_point, second_farthest_point = find_farthest_point(coordinates)
+    # points = find_adjusted_path_with_points(farthest_point, second_farthest_point, [0, 0], coordinates)
+    # points = find_adjusted_path_with_points(farthest_point, [0, 0], coordinates)
+    points = find_adjusted_path_with_points(farthest_point, second_farthest_point, [0, 0], coordinates, future_position=future_position)
     print('PATH: ', points)
 
     points_distance = PREDICT_LEVEL
@@ -286,7 +331,8 @@ def path_find(lidar_data):
         points_distance = len(points)
 
     adjusted_midpoint = points[-points_distance]
-    angle = calculate_angle([0, 0], adjusted_midpoint)
+    # angle = calculate_angle([0, 0], adjusted_midpoint)
+    angle = calculate_angle(future_position, adjusted_midpoint)
     ratio = convert_angle_to_ratio(angle)
 
     print(f"Angle: {angle} degrees")
@@ -364,7 +410,7 @@ def update():
         return
     
     start = time.time()
-    angle_error, farthest_point = path_find(average_scan)
+    angle_error, farthest_point = path_find(average_scan, angle, speed)
     print('time: ', time.time() - start)
 
     # Update angle integral term
@@ -399,7 +445,7 @@ def update():
 
     speed = TARGET_SPEED
 
-    farthest_distance = farthest_point[2]
+    farthest_distance = farthest_point[1] #2
     if farthest_point[1] < 30 and flag < (60 * HARD_BRAKE_SECOND):
         speed = HARD_BREAK_SPEED
         angle *= 1.5
@@ -421,6 +467,10 @@ def update():
             speed = BOOST_SPEED
         flag = 0
     flag %= 60
+
+   # if distance_left or distance_right < 55:
+    #    speed = MINIMUM_SPEED
+
 
     # print(speed, flag)
     print(speed)
