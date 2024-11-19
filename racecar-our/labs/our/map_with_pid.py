@@ -444,7 +444,9 @@ def update():
     # # Convert speed PID output to speed
     # speed += speed_pid_output
 
-    speed = TARGET_SPEED
+    speed = MINIMUM_SPEED
+    if abs(angle) < 0.3:
+        speed = TARGET_SPEED
 
     farthest_distance = farthest_point[1] #2
     if farthest_point[1] < 30 and flag < (60 * HARD_BRAKE_SECOND):
