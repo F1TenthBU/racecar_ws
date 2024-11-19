@@ -21,6 +21,7 @@ IS_SIM = False
 rc = racecar_core.create_racecar(IS_SIM)
 
 SHOW_PLOT = False
+TEST_WITHOUT_SPEED = False
 
 # >> Constants
 WINDOW_SIZE = 8 # Window size to calculate the average distance
@@ -47,19 +48,19 @@ else:
     PREDICT_LEVEL = 2
     CAR_WIDTH = 45 #40
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 300 #400 #250
+    BRAKE_DISTANCE = 325 #400 #250
     BRAKE_SECOND = 1/3.25
     # HARD_BRAKE_DISTANCE = 200
     HARD_BRAKE_SECOND = 1/3.5
-    TARGET_SPEED = 0.35 #0.42
+    TARGET_SPEED = 0.4 #0.4 #0.42
     HARD_BREAK_SPEED = -0.6
     BREAK_SPEED = -0.4
     MINIMUM_SPEED = 0.2
-    BOOST_SPEED = 0.40
+    BOOST_SPEED = 0.5 #0.5
     TARGET_PREDICT_DISTANCE = 50
-    KP = 0.215 #0.275 #0.25 0.2
+    KP = 0.6 #0.215 #0.275 #0.25 0.2
     KI = 0.0
-    KD = 0.22 #0.2 # 0.1  0.05   0.01
+    KD = 0.1 #0.22 #0.2 # 0.1  0.05   0.01
 
 prev_error_angle = 0  # Previous error for angle control
 integral_angle = 0  # Integral term for angle control
@@ -474,6 +475,9 @@ def update():
 
     # print(speed, flag)
     print(speed)
+    # angle = -0.1
+    if TEST_WITHOUT_SPEED:
+        speed = 0.0
     # speed = -0.75
     # emergency_distance = get_farthest_distance_in_range(average_scan, -45, 45)
     # if emergency_distance < 30:
