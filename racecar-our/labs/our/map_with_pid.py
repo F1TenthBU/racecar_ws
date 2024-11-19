@@ -45,17 +45,20 @@ if IS_SIM:
 else:
     # This Values are for REAL
     PREDICT_LEVEL = 2
-    CAR_WIDTH = 30
+    CAR_WIDTH = 40
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 325 #275 #250
-    BRAKE_SECOND = 1/2.5
+    BRAKE_DISTANCE = 300 #250
+    BRAKE_SECOND = 1/4.0
     # HARD_BRAKE_DISTANCE = 200
     HARD_BRAKE_SECOND = 1/2.0
-    TARGET_SPEED = 0.44 #0.42
+    TARGET_SPEED = 0.3 #0.42
+    HARD_BREAK_SPEED = -0.6
+    BREAK_SPEED = -0.4
     MINIMUM_SPEED = 0.2
-    KP = 0.3 #0.275 #0.25 0.2
+    BOOST_SPEED = 0.4
+    KP = 0.275 #0.275 #0.25 0.2
     KI = 0.0
-    KD = 0.2 # 0.1  0.05   0.01
+    KD = 0.22 #0.2 # 0.1  0.05   0.01
 
 prev_error_angle = 0  # Previous error for angle control
 integral_angle = 0  # Integral term for angle control
@@ -354,8 +357,8 @@ def update():
     global average_scan
     global flag
 
-    #rc.drive.set_speed_angle(-1.0, 0.0)
-    #return
+    # rc.drive.set_speed_angle(0.1, 0.0)
+    # return
 
     if update_lidar() == False:
         return
@@ -397,28 +400,31 @@ def update():
     speed = TARGET_SPEED
 
     farthest_distance = farthest_point[2]
-    if farthest_point[1] < 20 and flag < (60 * HARD_BRAKE_SECOND):
-        speed = -0.4
+    if farthest_point[1] < 30 and flag < (60 * HARD_BRAKE_SECOND):
+        speed = HARD_BREAK_SPEED
+        angle *= 1.5
+        print('hard breaking')
         flag += 1
     # if farthest_distance < HARD_BRAKE_DISTANCE and flag < (60 * HARD_BRAKE_SECOND):
     #     speed = -0.2
     #     flag += 1
     elif farthest_distance < BRAKE_DISTANCE and flag < (60 * BRAKE_SECOND):
-        # speed = -0.2
-        speed = -0.3
+        speed = BREAK_SPEED
+        angle *= 1.2
+        print('breaking')
         flag += 1
     elif flag > 0:
         speed = MINIMUM_SPEED
         flag += 1
     else:
         if angle < 0.05 and angle > -0.05 and farthest_distance > 500:
-            speed = 0.47
+            speed = BOOST_SPEED
         flag = 0
     flag %= 60
 
     # print(speed, flag)
-    speed = -0.3
     print(speed)
+    # speed = -0.75
     # emergency_distance = get_farthest_distance_in_range(average_scan, -45, 45)
     # if emergency_distance < 30:
     #     speed = -1.0
