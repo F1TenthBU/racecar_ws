@@ -49,16 +49,16 @@ else:
     PREDICT_LEVEL = 2
     CAR_WIDTH = 45 #40
     UNIT_PATH_LENGTH = 20
-    BRAKE_DISTANCE = 325 #400 #250
-    BRAKE_SECOND = 1/3.25
+    BRAKE_DISTANCE = 350 #400 #250
+    BRAKE_SECOND = 1/3.5
     # HARD_BRAKE_DISTANCE = 200
     HARD_BRAKE_SECOND = 1/3.5
     TARGET_SPEED = 0.4 #0.4 #0.42
     HARD_BREAK_SPEED = -0.6
     BREAK_SPEED = -0.4
     MINIMUM_SPEED = 0.2
-    BOOST_SPEED = 0.5 #0.5
-    TARGET_PREDICT_DISTANCE = 50
+    BOOST_SPEED = 0.4 #0.5
+    TARGET_PREDICT_DISTANCE = -50
     EMERGENCY_DISTANCE = 150
     MINIMUM_GAP = 40
     if SLOW_TEST:
@@ -68,6 +68,8 @@ else:
     KP = 0.6 #0.215 #0.275 #0.25 0.2
     KI = 0.0
     KD = 0.1 #0.22 #0.2 # 0.1  0.05   0.01
+
+prev_angle_degree = 0
 
 prev_error_angle = 0  # Previous error for angle control
 integral_angle = 0  # Integral term for angle control
@@ -102,6 +104,16 @@ def get_farthest_distance_in_range(scan, start, end):
 
     return np.max(values_in_range)
 
+def lidar_to_2d_coordinates2(lidar_data):
+    coordinates = []
+    for idx, distance in enumerate(lidar_data):
+        adjusted_angle_rad = math.radians(90 - idx)
+        x = distance * math.cos(adjusted_angle_rad)
+        y = distance * math.sin(adjusted_angle_rad)
+        abs_idx = abs(idx - 180)
+        coordinates.append((x, y, (distance * abs_idx + 90) / 180))
+    return coordinates
+
 def lidar_to_2d_coordinates(lidar_data):
     coordinates = []
     for angle in range(360):
@@ -113,10 +125,38 @@ def lidar_to_2d_coordinates(lidar_data):
         coordinates.append((x, y, distance))
     return coordinates
 
-def find_farthest_point(coordinates):
-    filtered_points = [point for point in coordinates if point[1] > 0]
+def find_farthest_point2(coordinates, angle):
+    angle = 45 if angle > 45 else int(angle)
+
+    front_range = 90 - angle
+    back_range = 270 + angle
+    print(front_range, back_range)
+
+    front_points = coordinates[:front_range]
+    back_points = coordinates[back_range:]
+    filtered_points = front_points + back_points
+    
     if not filtered_points:
         return None, None
+    
+    farthest_point = max(filtered_points, key=lambda p: p[2])
+    farthest_idx = filtered_points.index(farthest_point)
+    
+    if farthest_point[0] == 0 or farthest_idx == 0 or farthest_idx == len(filtered_points) - 1:
+        return farthest_point, None
+    
+    if farthest_point[0] < 0:
+        second_farthest_point = filtered_points[farthest_idx + 1]
+    else:
+        second_farthest_point = filtered_points[farthest_idx - 1]
+    
+    return farthest_point, second_farthest_point
+
+def find_farthest_point(coordinates):
+    # filtered_points = [point for point in coordinates if point[1] > 0]
+    # if not filtered_points:
+    #     return None, None
+    filtered_points = coordinates
     
     farthest_point = max(filtered_points, key=lambda p: p[2])
     farthest_idx = filtered_points.index(farthest_point)
@@ -146,6 +186,30 @@ def point_along_line(origin, target, distance):
     return [point_x, point_y]
 
 def find_side_points(coordinates, origin):
+    origin_idx = coordinates.index(origin)
+    lefts = []
+    rights = []
+    
+    if 0 <= origin_idx <= 90:
+        lefts = coordinates[origin_idx::-1] + coordinates[359:269:-1]
+        rights = coordinates[origin_idx:91]
+    
+    elif 270 <= origin_idx <= 359:
+        lefts = coordinates[270:origin_idx + 1]
+        rights = coordinates[origin_idx:] + coordinates[:91]
+    
+    lefts = [point for point in lefts if point[1] > 0]
+    rights = [point for point in rights if point[1] > 0]
+    
+    if len(lefts) == 0 or len(rights) == 0:
+        print('WARN! No left or right side.')
+        # print(lefts)
+        # print(rights)
+        return lefts, rights
+
+    return lefts, rights
+
+def find_side_points2(coordinates, origin):
     lefts = []
     rights = []
     adding_to_lefts = True
@@ -194,6 +258,7 @@ def adjust_midpoint(midpoint, closest_left, closest_right, distance=CAR_WIDTH):
     # distance here is different to one in find_adjusted_path_with_points()
     distance_left = math.hypot(midpoint[0] - closest_left[0], midpoint[1] - closest_left[1])
     distance_right = math.hypot(midpoint[0] - closest_right[0], midpoint[1] - closest_right[1])
+    return [(closest_left[0] + closest_right[0]) / 2, (closest_left[1] + closest_right[1]) / 2]
 
     if min(distance_left, distance_right) > distance:
         return midpoint
@@ -372,11 +437,13 @@ def calculate_new_origin(angle, speed, distance=50):
     return [new_x, new_y]
 
 def path_find(lidar_data, angle, speed):
+    global prev_angle_degree
     future_position = calculate_new_origin(angle, speed)
     print(future_position)
 
-    coordinates = lidar_to_2d_coordinates(lidar_data)
+    coordinates = lidar_to_2d_coordinates2(lidar_data)
     farthest_point, second_farthest_point = find_farthest_point(coordinates)
+    # farthest_point, second_farthest_point = find_farthest_point2(coordinates, prev_angle_degree)
     # points = find_adjusted_path_with_points(farthest_point, second_farthest_point, [0, 0], coordinates)
     # points = find_adjusted_path_with_points(farthest_point, [0, 0], coordinates)
     points = find_adjusted_path_with_points(farthest_point, second_farthest_point, [0, 0], coordinates, future_position=future_position)
@@ -392,6 +459,7 @@ def path_find(lidar_data, angle, speed):
     adjusted_midpoint = points[-points_distance]
     # angle = calculate_angle([0, 0], adjusted_midpoint)
     angle = calculate_angle(future_position, adjusted_midpoint)
+    prev_angle_degree = abs(angle)
     ratio = convert_angle_to_ratio(angle)
 
     print(f"Angle: {angle} degrees")
@@ -507,7 +575,12 @@ def update():
         speed = TARGET_SPEED
 
     if farthest_point == None:
-        speed = 0.0
+        if flag < 30:
+            speed = 0.0
+        else:
+            speed = MINIMUM_SPEED
+        flag += 1
+        flag %= 60
     else:
         farthest_distance = farthest_point[1] #2
         if farthest_point[1] < 30 and flag < (60 * HARD_BRAKE_SECOND):
